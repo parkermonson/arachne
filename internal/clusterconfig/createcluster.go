@@ -1,20 +1,37 @@
 package clusterconfig
 
+//TODO - build constraints and a seperate file for windows. Because windows.
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
+
+type ClusterCfg struct {
+	Name  string
+	Nodes []Node
+}
+
+type Node struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	ExecCmd string `json:"command"`   //TODO - change this to execcmd to avoid confusion with type
+	Args    string `json:"arguments"` //TODO - Ugh, fix this too. This needs to be an array. How we gonna input that?
+	RootDir string `json:"rootdirectory"`
+}
 
 func CreateCluster() {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("Creating New Cluster")
 
-	nodeSettings := []string{"name", "type", "command", "arguments", "rootdirectory"}
+	// nodeSettings := []string{"name", "type", "command", "arguments", "rootdirectory"}
 
-	finishedNodes := make([]map[string]string, 0)
+	finishedNodes := make([]Node, 0)
 
 	//get the cluster name
 	name, err := getClusterName(reader)
@@ -23,29 +40,64 @@ func CreateCluster() {
 	}
 
 	for {
+		node := Node{}
 
-		newNode := map[string]string{}
-
-		for _, settingKey := range nodeSettings {
-			err := handleInput(settingKey, newNode, reader)
-			if err != nil {
-				//do the bad
-			}
+		err := defineNode(&node, reader)
+		if err != nil {
+			log.Panicf("error getting input: %s\n", err.Error())
 		}
 
-		ok, err := createNextNode(reader)
-		if !ok || err != nil {
-			break
+		finishedNodes = append(finishedNodes, node)
+
+		next, err := createNextNode(reader)
+		if next && err == nil {
+			continue
+		} else if err != nil {
+			log.Panicf("error handling next input: %s", err.Error)
 		}
-
-		finishedNodes = append(finishedNodes, newNode)
-
+		break
 	}
 
-	fmt.Println("\n\nFinal cluster setup:")
-	fmt.Println("Name: " + name)
-	fmt.Printf("%+v\n", finishedNodes)
+	file, err := json.MarshalIndent(ClusterCfg{Name: name, Nodes: finishedNodes}, "", "    ")
+	if err != nil {
+		log.Panicf("error encoding json file: %s\n", err.Error())
+	}
 
+	// err = ioutil.WriteFile("../cluster-configs/config.json", file, 0644)
+	// if err != nil {
+	// 	log.Panicf("error writing json file: %s\n", err.Error())
+	// }
+
+	// log.Println("success write?")
+	// absDir, err := filepath.Abs("/internal/set-configs/")
+	absPath, err := filepath.Abs("internal/set-configs/" + name + ".json")
+
+	var dest *os.File
+
+	//if file doesn't exist, create it
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		os.MkdirAll("internal/set-configs/", 0700)
+
+		dest, err = os.Create(absPath)
+		if err != nil {
+			log.Printf("error creating file: %s", err.Error())
+			return
+		}
+		defer dest.Close()
+
+	} else { //otherwise append. Will probably change to overwrite
+		dest, err = os.Open(absPath)
+		if err != nil {
+			log.Printf("error opening file: %s", err.Error())
+			return
+		}
+		defer dest.Close()
+	}
+
+	err = ioutil.WriteFile(absPath, file, 0644)
+	if err != nil {
+		log.Panicf("error writing json file: %s\n", err.Error())
+	}
 }
 
 func getClusterName(reader *bufio.Reader) (string, error) {
@@ -58,16 +110,49 @@ func getClusterName(reader *bufio.Reader) (string, error) {
 	return text, nil
 }
 
-//TODO - handle bad input, maybe?
-func handleInput(settingKey string, node map[string]string, reader *bufio.Reader) error {
+func defineNode(node *Node, reader *bufio.Reader) error {
+	name, err := handleInput("name", reader)
+	if err != nil {
+		return err
+	}
+	node.Name = name
+
+	nodeType, err := handleInput("type", reader)
+	if err != nil {
+		return err
+	}
+	node.Type = nodeType
+
+	execCmd, err := handleInput("command", reader)
+	if err != nil {
+		return err
+	}
+	node.ExecCmd = execCmd
+
+	args, err := handleInput("arguments", reader)
+	if err != nil {
+		return err
+	}
+	node.Args = args
+
+	root, err := handleInput("rootdirectory", reader)
+	if err != nil {
+		return err
+	}
+	node.RootDir = root
+
+	return nil
+}
+
+//TODO - validate input
+func handleInput(settingKey string, reader *bufio.Reader) (string, error) {
 	displayMsg := displayMessage(settingKey)
 	fmt.Print(displayMsg)
 
 	text, _ := reader.ReadString('\n')
 	text = strings.Replace(text, "\n", "", -1) //needs to be "\r\n" for windows
 
-	node[settingKey] = text
-	return nil
+	return text, nil
 }
 
 func displayMessage(key string) string {
