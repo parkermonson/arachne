@@ -16,7 +16,7 @@ limitations under the License.
 package cmd
 
 import (
-	"personal/arachne/internal/clusterconfig"
+	"github.com/parkermonson/arachne/internal/clusterconfig"
 
 	"github.com/spf13/cobra"
 )

@@ -16,7 +16,7 @@ limitations under the License.
 package cmd
 
 import (
-	"personal/arachne/internal/clusterup"
+	"github.com/parkermonson/arachne/internal/clusterup"
 
 	"github.com/spf13/cobra"
 )

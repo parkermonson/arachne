@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os/exec"
+
+	"github.com/parkermonson/arachne/internal/helpers"
 )
 
 type WorkerNode struct {
@@ -29,18 +31,18 @@ type MessageData struct {
 	ErrMessage  string
 }
 
-func CreateWorker(meta WorkerMetadata, messages chan MessageData, stopped chan struct{}, stopWorker chan struct{}) *WorkerNode {
+func CreateWorker(meta helpers.Node, messages chan MessageData, stopped chan struct{}, stopWorker chan struct{}) *WorkerNode {
 	//set a name
 	name := meta.Name
 	if name == "" {
-		name = meta.Command
+		name = meta.ExecCmd
 	}
 
 	return &WorkerNode{
 		Name:        name,
 		Type:        meta.Type,
-		Command:     meta.Command,
-		Args:        meta.Args,
+		Command:     meta.ExecCmd,
+		Args:        []string{meta.Args},
 		RootDir:     meta.RootDir,
 		MessageChan: messages,
 		StoppedChan: stopped,

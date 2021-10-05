@@ -1,4 +1,4 @@
-package clusterconfig
+package helpers
 
 import (
 	"encoding/json"
@@ -61,7 +61,7 @@ func WriteConfig(cfg ClusterCfg) error {
 	return nil
 }
 
-func readConfig(name string) (*ClusterCfg, error) {
+func ReadConfig(name string) (*ClusterCfg, error) {
 	absPath, err := filepath.Abs("internal/set-configs/" + name + ".json")
 	if err != nil {
 		return nil, err
