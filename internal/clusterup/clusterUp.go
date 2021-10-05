@@ -7,9 +7,11 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/parkermonson/arachne/internal/helpers"
 )
 
-var StandbyQueue []WorkerMetadata
+var StandbyQueue []helpers.Node
 
 //this will be useless
 type WorkerPool struct {
@@ -19,14 +21,14 @@ type WorkerPool struct {
 }
 
 //this runs the pool, and reruns it in the event of a restart cluster
-func Orchestrate() {
+func Orchestrate(name string) {
 
 	var wg sync.WaitGroup
 
 	go func() {
 		for {
 			wg.Add(1)
-			runPool(wg)
+			runPool(wg, name)
 		}
 	}()
 
@@ -40,14 +42,16 @@ func Orchestrate() {
 }
 
 //this runs the commands and closes them on update or cluster exit
-func runPool(wg sync.WaitGroup) {
+func runPool(wg sync.WaitGroup, name string) {
 	var err error
 
 	//set up queue of workers
-	StandbyQueue, err = getClusterConfig("") //TODO - ugh, naming
+	cluster, err := helpers.ReadConfig(name) //TODO - ugh, naming
 	if err != nil {
 		//log the bad, do the bad, this is bad
 	}
+
+	StandbyQueue = cluster.Nodes
 
 	//this is how we do graceful shutdown, waiting to close channels until all workers goroutines have stopped
 	totalWorkers := len(StandbyQueue)
@@ -105,37 +109,37 @@ func runPool(wg sync.WaitGroup) {
 
 }
 
-//This gets pulled from the json
-type WorkerMetadata struct {
-	Name    string `json:""`
-	Type    string
-	Command string
-	Args    []string
-	RootDir string
-}
+// //This gets pulled from the json
+// type WorkerMetadata struct {
+// 	Name    string `json:""`
+// 	Type    string
+// 	Command string
+// 	Args    []string
+// 	RootDir string
+// }
 
-func getClusterConfig(name string) ([]WorkerMetadata, error) {
-	runNodes := make([]WorkerMetadata, 0)
+// func getClusterConfig(name string) ([]WorkerMetadata, error) {
+// 	runNodes := make([]WorkerMetadata, 0)
 
-	node1 := WorkerMetadata{
-		Name:    "test1",
-		Type:    "command",
-		Command: "/Users/parker/go/src/personal/arachne-test-services/test1/test1",
-		RootDir: "/Users/parker/go/src/personal/arachne-test-services/test1/",
-	}
+// 	node1 := WorkerMetadata{
+// 		Name:    "test1",
+// 		Type:    "command",
+// 		Command: "/Users/parker/go/src/personal/arachne-test-services/test1/test1",
+// 		RootDir: "/Users/parker/go/src/personal/arachne-test-services/test1/",
+// 	}
 
-	node2 := WorkerMetadata{
-		Name:    "test2",
-		Type:    "service",
-		Command: "/Users/parker/go/src/personal/arachne-test-services/test2/test2",
-		RootDir: "/Users/parker/go/src/personal/arachne-test-services/test2/",
-	}
+// 	node2 := WorkerMetadata{
+// 		Name:    "test2",
+// 		Type:    "service",
+// 		Command: "/Users/parker/go/src/personal/arachne-test-services/test2/test2",
+// 		RootDir: "/Users/parker/go/src/personal/arachne-test-services/test2/",
+// 	}
 
-	runNodes = append(runNodes, node1)
+// 	runNodes = append(runNodes, node1)
 
-	runNodes = append(runNodes, node2)
+// 	runNodes = append(runNodes, node2)
 
-	return runNodes, nil
-}
+// 	return runNodes, nil
+// }
 
-//maybe in another file?
+// //maybe in another file?

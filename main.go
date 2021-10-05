@@ -16,7 +16,7 @@ limitations under the License.
 package main
 
 import (
-	"personal/arachne/cmd"
+	"github.com/parkermonson/arachne/cmd"
 )
 
 func main() {

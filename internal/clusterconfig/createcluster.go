@@ -3,27 +3,13 @@ package clusterconfig
 //TODO - build constraints and a seperate file for windows. Because windows.
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
+
+	"github.com/parkermonson/arachne/internal/helpers"
 )
-
-type ClusterCfg struct {
-	Name  string
-	Nodes []Node
-}
-
-type Node struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	ExecCmd string `json:"command"`   //TODO - change this to execcmd to avoid confusion with type
-	Args    string `json:"arguments"` //TODO - Ugh, fix this too. This needs to be an array. How we gonna input that?
-	RootDir string `json:"rootdirectory"`
-}
 
 func CreateCluster() {
 	reader := bufio.NewReader(os.Stdin)
@@ -31,7 +17,7 @@ func CreateCluster() {
 
 	// nodeSettings := []string{"name", "type", "command", "arguments", "rootdirectory"}
 
-	finishedNodes := make([]Node, 0)
+	finishedNodes := make([]helpers.Node, 0)
 
 	//get the cluster name
 	name, err := getClusterName(reader)
@@ -40,7 +26,7 @@ func CreateCluster() {
 	}
 
 	for {
-		node := Node{}
+		node := helpers.Node{}
 
 		err := defineNode(&node, reader)
 		if err != nil {
@@ -58,46 +44,7 @@ func CreateCluster() {
 		break
 	}
 
-	file, err := json.MarshalIndent(ClusterCfg{Name: name, Nodes: finishedNodes}, "", "    ")
-	if err != nil {
-		log.Panicf("error encoding json file: %s\n", err.Error())
-	}
-
-	// err = ioutil.WriteFile("../cluster-configs/config.json", file, 0644)
-	// if err != nil {
-	// 	log.Panicf("error writing json file: %s\n", err.Error())
-	// }
-
-	// log.Println("success write?")
-	// absDir, err := filepath.Abs("/internal/set-configs/")
-	absPath, err := filepath.Abs("internal/set-configs/" + name + ".json")
-
-	var dest *os.File
-
-	//if file doesn't exist, create it
-	if _, err := os.Stat(absPath); os.IsNotExist(err) {
-		os.MkdirAll("internal/set-configs/", 0700)
-
-		dest, err = os.Create(absPath)
-		if err != nil {
-			log.Printf("error creating file: %s", err.Error())
-			return
-		}
-		defer dest.Close()
-
-	} else { //otherwise append. Will probably change to overwrite
-		dest, err = os.Open(absPath)
-		if err != nil {
-			log.Printf("error opening file: %s", err.Error())
-			return
-		}
-		defer dest.Close()
-	}
-
-	err = ioutil.WriteFile(absPath, file, 0644)
-	if err != nil {
-		log.Panicf("error writing json file: %s\n", err.Error())
-	}
+	helpers.WriteConfig(helpers.ClusterCfg{Name: name, Nodes: finishedNodes})
 }
 
 func getClusterName(reader *bufio.Reader) (string, error) {
@@ -110,7 +57,7 @@ func getClusterName(reader *bufio.Reader) (string, error) {
 	return text, nil
 }
 
-func defineNode(node *Node, reader *bufio.Reader) error {
+func defineNode(node *helpers.Node, reader *bufio.Reader) error {
 	name, err := handleInput("name", reader)
 	if err != nil {
 		return err
